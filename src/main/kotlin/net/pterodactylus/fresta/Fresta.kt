@@ -26,6 +26,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.jackson.jackson
 import io.ktor.request.receive
 import io.ktor.response.respond
+import io.ktor.response.respondFile
 import io.ktor.response.respondText
 import io.ktor.routing.get
 import io.ktor.routing.put
@@ -37,9 +38,13 @@ import net.pterodactylus.fcp.FcpConnection
 import net.pterodactylus.fcp.highlevel.FcpClient
 import net.pterodactylus.fresta.config.ConfigEndpoint
 import net.pterodactylus.fresta.config.FcpConfigService
+import net.pterodactylus.fresta.download.DOWNLOADS_PATH
+import net.pterodactylus.fresta.download.DownloadEndpoint
+import net.pterodactylus.fresta.download.FcpDownloadService
 import net.pterodactylus.fresta.fcp.AccessDenied
 import net.pterodactylus.fresta.key.FcpKeyService
 import net.pterodactylus.fresta.key.KeyEndpoint
+import java.io.File
 
 fun main() {
 	fcpClient.connect("fresta")
@@ -68,6 +73,28 @@ fun main() {
 					call.respond(keyEndpoint.generateKey())
 				}
 			}
+			route("/download") {
+				get("/{key...}") {
+					val key = call.parameters.getAll("key")?.joinToString("/")
+							?: throw IllegalArgumentException("Key is required")
+					val downloadResult = downloadEndpoint.download(key)
+					if (downloadResult.ready) {
+						val filename = downloadResult.filename
+						if (downloadResult.success && filename != null) {
+							val file = File(DOWNLOADS_PATH, filename)
+							if(file.exists()) {
+								call.respondFile(file)
+							} else {
+								call.respond(HttpStatusCode.NotFound)
+							}
+						} else {
+							call.respond(HttpStatusCode.NotFound)
+						}
+					} else {
+						call.respond(HttpStatusCode.Accepted)
+					}
+				}
+			}
 			get("/") {
 				call.respondText("OK", Text.Plain)
 			}
@@ -83,6 +110,8 @@ private val fcpClient = FcpClient(fcpConnection, false)
 
 private val configService = FcpConfigService(fcpClient)
 private val keyService = FcpKeyService(fcpClient)
+private val downloadService = FcpDownloadService(fcpClient)
 
 private val configEndpoint = ConfigEndpoint(configService)
 private val keyEndpoint = KeyEndpoint(keyService)
+private val downloadEndpoint = DownloadEndpoint(downloadService)
