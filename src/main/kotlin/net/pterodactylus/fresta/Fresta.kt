@@ -82,7 +82,7 @@ fun main() {
 						val filename = downloadResult.filename
 						if (downloadResult.success && filename != null) {
 							val file = File(DOWNLOADS_PATH, filename)
-							if(file.exists()) {
+							if (file.exists()) {
 								call.respondFile(file)
 							} else {
 								call.respond(HttpStatusCode.NotFound)
