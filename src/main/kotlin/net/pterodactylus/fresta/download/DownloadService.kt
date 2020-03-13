@@ -8,4 +8,8 @@ interface DownloadService {
 
 }
 
-data class DownloadResult(var ready: Boolean = false, var success: Boolean = false, var filename: String? = null)
+data class DownloadResult(
+		var ready: Boolean = false,
+		var success: Boolean = false,
+		var message: String? = null
+)

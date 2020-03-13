@@ -19,6 +19,7 @@ package net.pterodactylus.fresta
 
 import io.ktor.application.call
 import io.ktor.application.install
+import io.ktor.features.BadRequestException
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.StatusPages
 import io.ktor.http.ContentType.Text
@@ -57,6 +58,9 @@ fun main() {
 			exception<AccessDenied> {
 				call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
 			}
+			exception<BadRequestException> {
+				call.respond(HttpStatusCode.BadRequest, it.message ?: "")
+			}
 		}
 		routing {
 			route("/config") {
@@ -76,19 +80,19 @@ fun main() {
 			route("/download") {
 				get("/{key...}") {
 					val key = call.parameters.getAll("key")?.joinToString("/")
-							?: throw IllegalArgumentException("Key is required")
+					if (key.isNullOrEmpty()) throw BadRequestException("Key is required")
+
 					val downloadResult = downloadEndpoint.download(key)
 					if (downloadResult.ready) {
-						val filename = downloadResult.filename
-						if (downloadResult.success && filename != null) {
-							val file = File(DOWNLOADS_PATH, filename)
+						if (downloadResult.success) {
+							val file = File(DOWNLOADS_PATH, key.replace("/", File.separator))
 							if (file.exists()) {
 								call.respondFile(file)
 							} else {
-								call.respond(HttpStatusCode.NotFound)
+								call.respond(HttpStatusCode.InternalServerError)
 							}
 						} else {
-							call.respond(HttpStatusCode.NotFound)
+							call.respond(HttpStatusCode.NotFound, downloadResult.message ?: "")
 						}
 					} else {
 						call.respond(HttpStatusCode.Accepted)

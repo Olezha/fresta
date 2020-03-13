@@ -3,6 +3,7 @@ package net.pterodactylus.fresta.download
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.pterodactylus.fcp.highlevel.FcpClient
+import net.pterodactylus.fcp.highlevel.GetResult
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -17,23 +18,27 @@ class FcpDownloadService(private val fcpClient: FcpClient) : DownloadService {
 		downloadResult = DownloadResult()
 		downloads[key] = downloadResult
 		GlobalScope.launch {
+			var getResult: GetResult? = null
 			try {
-				val getResult = fcpClient.getURI(key, false)
+				getResult = fcpClient.getURI(key, false)
 				if (getResult.isSuccess && getResult.inputStream != null) {
-					val dir = File(DOWNLOADS_PATH)
+					val dir = File(DOWNLOADS_PATH + File.separator
+							+ key.substringBeforeLast('/').replace("/", File.separator))
 					dir.mkdirs()
-					val filename = key.substringAfterLast('/')
-					File(dir, filename).outputStream().use {
+					File(dir, key.substringAfterLast('/')).outputStream().use {
 						getResult.inputStream.copyTo(it)
 					}
-					getResult.inputStream.close()
 
-					downloads[key] = DownloadResult(true, true, filename)
+					downloads[key] = DownloadResult(ready = true, success = true)
 				} else {
-					downloads[key] = DownloadResult(true, false)
+					downloads[key] = DownloadResult(ready = true, success = false, message = getResult.toString())
 				}
 			} catch (e: Exception) {
-				e.printStackTrace() // TODO
+				downloads[key] = DownloadResult(ready = true, success = false, message = "$e ${e.message}")
+			} finally {
+				if (getResult != null && getResult.inputStream != null) {
+					getResult.inputStream.close()
+				}
 			}
 		}
 		return downloadResult
