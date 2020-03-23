@@ -13,6 +13,8 @@ node, e.g. on mobile phones.
 At the moment Fresta offers 3 endpoints: GetConfig, SetConfig, and
 GenerateKeypair.
 
+- UploadFile
+
 ## GetConfig
 
 This returns the node’s complete configuration.
@@ -31,6 +33,14 @@ This lets you set configuration options on the node.
 This generates an SSK key pair.
 
 > GET /keypair
+
+## UploadFile
+
+Upload file to Freenet
+
+> POST /upload
+
+> GET /upload/{id}
 
 # Compiling
 

@@ -23,14 +23,15 @@ import io.ktor.features.ContentNegotiation
 import io.ktor.features.StatusPages
 import io.ktor.http.ContentType.Text
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.PartData
+import io.ktor.http.content.forEachPart
+import io.ktor.http.content.streamProvider
 import io.ktor.jackson.jackson
 import io.ktor.request.receive
+import io.ktor.request.receiveMultipart
 import io.ktor.response.respond
 import io.ktor.response.respondText
-import io.ktor.routing.get
-import io.ktor.routing.put
-import io.ktor.routing.route
-import io.ktor.routing.routing
+import io.ktor.routing.*
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import net.pterodactylus.fcp.FcpConnection
@@ -40,6 +41,10 @@ import net.pterodactylus.fresta.config.FcpConfigService
 import net.pterodactylus.fresta.fcp.AccessDenied
 import net.pterodactylus.fresta.key.FcpKeyService
 import net.pterodactylus.fresta.key.KeyEndpoint
+import net.pterodactylus.fresta.upload.FcpUploadService
+import net.pterodactylus.fresta.upload.UPLOADS_PATH
+import java.io.File
+import java.util.*
 
 fun main() {
 	fcpClient.connect("fresta")
@@ -68,6 +73,41 @@ fun main() {
 					call.respond(keyEndpoint.generateKey())
 				}
 			}
+			route("/upload") {
+				get("/{id}") {
+					call.respond(call.parameters["id"]!!) // TODO: endpoint to receive the Freenet key by id
+				}
+				post {
+					// TODO: move smth to UploadEndpoint
+					val multipart = call.receiveMultipart()
+					val id = UUID.randomUUID().toString()
+					var title: String? = null
+					var file: File? = null
+
+					val dir = File(UPLOADS_PATH)
+					dir.mkdir()
+
+					multipart.forEachPart { part ->
+						if (part is PartData.FileItem) {
+							title = part.originalFileName
+							val f = File(dir, id)
+
+							part.streamProvider().use { its ->
+								f.outputStream().use {
+									its.copyTo(it)
+								}
+							}
+							file = f
+						}
+
+						part.dispose()
+					}
+
+					uploadService.upload(file!!, title!!)
+
+					call.respond(HttpStatusCode.Accepted, id)
+				}
+			}
 			get("/") {
 				call.respondText("OK", Text.Plain)
 			}
@@ -83,6 +123,7 @@ private val fcpClient = FcpClient(fcpConnection, false)
 
 private val configService = FcpConfigService(fcpClient)
 private val keyService = FcpKeyService(fcpClient)
+private val uploadService = FcpUploadService(fcpClient)
 
 private val configEndpoint = ConfigEndpoint(configService)
 private val keyEndpoint = KeyEndpoint(keyService)
