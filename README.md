@@ -10,8 +10,11 @@ node, e.g. on mobile phones.
 
 # Current State
 
-At the moment Fresta offers 3 endpoints: GetConfig, SetConfig, and
-GenerateKeypair.
+At the moment Fresta offers next endpoints:
+
+- GetConfig, SetConfig
+- GenerateKeypair
+- DownloadFile
 
 ## GetConfig
 
@@ -31,6 +34,14 @@ This lets you set configuration options on the node.
 This generates an SSK key pair.
 
 > GET /keypair
+
+## DownloadFile
+
+Download file from Freenet.
+
+> GET /download/{key}
+
+Response 202 Accepted if the download is in progress (client should repeat the request after a while).
 
 # Compiling
 
