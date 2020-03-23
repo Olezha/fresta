@@ -25,16 +25,17 @@ class FcpDownloadService(private val fcpClient: FcpClient) : DownloadService {
 					val dir = File(DOWNLOADS_PATH + File.separator
 							+ key.substringBeforeLast('/').replace("/", File.separator))
 					dir.mkdirs()
-					File(dir, key.substringAfterLast('/')).outputStream().use {
+					val file = File(dir, key.substringAfterLast('/'))
+					file.outputStream().use {
 						getResult.inputStream.copyTo(it)
 					}
 
-					downloads[key] = DownloadResult(ready = true, success = true)
+					downloads[key] = DownloadResult(ready = true, file = file)
 				} else {
-					downloads[key] = DownloadResult(ready = true, success = false, message = getResult.toString())
+					downloads[key] = DownloadResult(ready = true, message = getResult.toString())
 				}
 			} catch (e: Exception) {
-				downloads[key] = DownloadResult(ready = true, success = false, message = "$e ${e.message}")
+				downloads[key] = DownloadResult(ready = true, message = "$e ${e.message}")
 			} finally {
 				if (getResult != null && getResult.inputStream != null) {
 					getResult.inputStream.close()

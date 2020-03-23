@@ -1,5 +1,7 @@
 package net.pterodactylus.fresta.download
 
+import java.io.File
+
 const val DOWNLOADS_PATH = "downloads"
 
 interface DownloadService {
@@ -10,6 +12,6 @@ interface DownloadService {
 
 data class DownloadResult(
 		var ready: Boolean = false,
-		var success: Boolean = false,
-		var message: String? = null
+		var message: String? = null,
+		var file: File? = null
 )

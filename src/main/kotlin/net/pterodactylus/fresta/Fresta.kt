@@ -39,13 +39,11 @@ import net.pterodactylus.fcp.FcpConnection
 import net.pterodactylus.fcp.highlevel.FcpClient
 import net.pterodactylus.fresta.config.ConfigEndpoint
 import net.pterodactylus.fresta.config.FcpConfigService
-import net.pterodactylus.fresta.download.DOWNLOADS_PATH
 import net.pterodactylus.fresta.download.DownloadEndpoint
 import net.pterodactylus.fresta.download.FcpDownloadService
 import net.pterodactylus.fresta.fcp.AccessDenied
 import net.pterodactylus.fresta.key.FcpKeyService
 import net.pterodactylus.fresta.key.KeyEndpoint
-import java.io.File
 
 fun main() {
 	fcpClient.connect("fresta")
@@ -59,7 +57,7 @@ fun main() {
 				call.respond(HttpStatusCode.Unauthorized, "Unauthorized")
 			}
 			exception<BadRequestException> {
-				call.respond(HttpStatusCode.BadRequest, it.message ?: "")
+				call.respond(HttpStatusCode.BadRequest, it.message ?: "BadRequest")
 			}
 		}
 		routing {
@@ -80,19 +78,12 @@ fun main() {
 			route("/download") {
 				get("/{key...}") {
 					val key = call.parameters.getAll("key")?.joinToString("/")
-					if (key.isNullOrEmpty()) throw BadRequestException("Key is required")
-
 					val downloadResult = downloadEndpoint.download(key)
 					if (downloadResult.ready) {
-						if (downloadResult.success) {
-							val file = File(DOWNLOADS_PATH, key.replace("/", File.separator))
-							if (file.exists()) {
-								call.respondFile(file)
-							} else {
-								call.respond(HttpStatusCode.InternalServerError)
-							}
-						} else {
-							call.respond(HttpStatusCode.NotFound, downloadResult.message ?: "")
+						downloadResult.file?.let { file ->
+							call.respondFile(file)
+						} ?: kotlin.run {
+							call.respond(HttpStatusCode.NotFound, downloadResult.message ?: "NotFound")
 						}
 					} else {
 						call.respond(HttpStatusCode.Accepted)
