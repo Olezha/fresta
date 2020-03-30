@@ -74,23 +74,28 @@ fun main() {
 				}
 			}
 			route("/upload") {
-				get("/{id}") {
-					call.respond(call.parameters["id"]!!) // TODO: endpoint to receive the Freenet key by id
+				get("/{identifier}") {
+					val uploadResult = uploadService.check(call.parameters["identifier"]!!)
+					if (!uploadResult.ready) {
+						call.respond(HttpStatusCode.Accepted)
+					} else if (uploadResult.key != null) {
+						call.respond(uploadResult.key!!)
+					} else {
+						call.respond(HttpStatusCode.InternalServerError)
+					}
 				}
 				post {
 					// TODO: move smth to UploadEndpoint
 					val multipart = call.receiveMultipart()
-					val id = UUID.randomUUID().toString()
-					var title: String? = null
+					val identifier = UUID.randomUUID().toString()
 					var file: File? = null
 
-					val dir = File(UPLOADS_PATH)
-					dir.mkdir()
+					val dir = File(UPLOADS_PATH + File.separator + identifier)
+					dir.mkdirs()
 
 					multipart.forEachPart { part ->
 						if (part is PartData.FileItem) {
-							title = part.originalFileName
-							val f = File(dir, id)
+							val f = File(dir, part.originalFileName!!)
 
 							part.streamProvider().use { its ->
 								f.outputStream().use {
@@ -103,9 +108,9 @@ fun main() {
 						part.dispose()
 					}
 
-					uploadService.upload(file!!, title!!)
+					uploadService.upload(file!!)
 
-					call.respond(HttpStatusCode.Accepted, id)
+					call.respond(HttpStatusCode.Accepted, identifier)
 				}
 			}
 			get("/") {
